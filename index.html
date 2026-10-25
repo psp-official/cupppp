@@ -3,106 +3,524 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Hybrid Lossless Video Cutter</title>
+    <title>Hybrid Video Cutter</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- FFmpeg.wasm libraries for Client-side cutting -->
-    <script src="https://unpkg.com/@ffmpeg/ffmpeg@0.12.10/dist/umd/ffmpeg.js"></script>
-    <script src="https://unpkg.com/@ffmpeg/util@0.12.1/dist/umd/index.js"></script>
+    <style>
+        /* Dual Range Slider Custom Styling */
+        .range-slider {
+            position: relative;
+            width: 100%;
+            height: 10px;
+            background-color: #e2e8f0;
+            border-radius: 9999px;
+        }
+        .dark-slider {
+            background-color: #334155;
+        }
+        .range-selected {
+            position: absolute;
+            height: 100%;
+            background-color: #16a34a;
+            border-radius: 9999px;
+            z-index: 1;
+        }
+        .range-input {
+            position: absolute;
+            width: 100%;
+            height: 10px;
+            top: 0;
+            left: 0;
+            -webkit-appearance: none;
+            appearance: none;
+            background: none;
+            pointer-events: none;
+            z-index: 3;
+            margin: 0;
+        }
+        .range-input::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            border: 3px solid #ffffff;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.4);
+            cursor: pointer;
+            pointer-events: auto;
+            transition: transform 0.1s ease;
+        }
+        .range-input::-webkit-slider-thumb:active {
+            transform: scale(1.15);
+        }
+        .thumb-start::-webkit-slider-thumb {
+            background-color: #16a34a; /* အစိမ်းရောင် (Start) */
+        }
+        .thumb-end::-webkit-slider-thumb {
+            background-color: #eab308; /* အဝါရောင် (End) */
+        }
+        .range-input::-moz-range-thumb {
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            border: 3px solid #ffffff;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.4);
+            cursor: pointer;
+            pointer-events: auto;
+        }
+        .thumb-start::-moz-range-thumb {
+            background-color: #16a34a;
+        }
+        .thumb-end::-moz-range-thumb {
+            background-color: #eab308;
+        }
+    </style>
 </head>
 <body class="bg-slate-900 text-white min-h-screen flex items-center justify-center p-4">
 
-    <div class="bg-slate-800 p-6 rounded-2xl shadow-2xl w-full max-w-2xl border border-slate-700">
+    <div class="bg-slate-800 p-5 md:p-6 rounded-2xl shadow-xl w-full max-w-2xl border border-slate-700">
+        <!-- Header -->
         <div class="flex items-center justify-between mb-2">
-            <h1 class="text-2xl font-bold text-blue-400">✂️ Hybrid Video Cutter</h1>
-            <span class="text-xs bg-blue-500/20 text-blue-300 border border-blue-500/40 px-2.5 py-1 rounded-full">
+            <h1 class="text-2xl font-bold text-blue-400 leading-tight">✂️ Hybrid Video Cutter</h1>
+            <span class="text-xs bg-blue-950/80 text-blue-300 border border-blue-800 px-3 py-1.5 rounded-full">
                 Client + Server Mode
             </span>
         </div>
-        <p class="text-sm text-slate-400 mb-6">File size လုံးဝမကြီးသွားဘဲ မူရင်း Quality အတိုင်း အမြန်ဖြတ်ယူပါ</p>
+        <p class="text-sm text-slate-400 mb-5">File size လုံးဝမကြီးသွားဘဲ မူရင်း Quality အတိုင်း အမြန်ဖြတ်ယူပါ</p>
 
-        <!-- 1. File Upload -->
+        <!-- 1. Video File Input -->
         <div class="mb-4">
             <label class="block text-sm font-medium mb-2">၁။ Video ဖိုင်ရွေးချယ်ပါ</label>
             <input type="file" id="videoInput" accept="video/*" 
-                class="block w-full text-sm text-slate-300 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-blue-600 file:text-white hover:file:bg-blue-700 cursor-pointer bg-slate-900 rounded-lg p-2 border border-slate-700">
+                class="block w-full text-sm text-slate-300 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-blue-600 file:text-white hover:file:bg-blue-700 cursor-pointer bg-slate-900 rounded-xl p-2.5 border border-slate-700">
+        </div>
+
+        <!-- Video Preview Player -->
+        <div id="playerContainer" class="hidden mb-5 bg-slate-950 p-2.5 rounded-xl border border-slate-700">
+            <video id="videoPlayer" controls playsinline class="w-full rounded-lg max-h-72 bg-black"></video>
+        </div>
+
+        <!-- Timeline Slider Section (ပုံထဲကအတိုင်း အစိမ်း/အဝါ Slider) -->
+        <div class="mb-5 px-1">
+            <div class="relative pt-2 pb-1">
+                <div class="range-slider dark-slider">
+                    <div id="rangeSelected" class="range-selected" style="left: 0%; right: 0%;"></div>
+                </div>
+                <input type="range" id="startSlider" class="range-input thumb-start" min="0" max="100" step="0.1" value="0">
+                <input type="range" id="endSlider" class="range-input thumb-end" min="0" max="100" step="0.1" value="100">
+            </div>
+            <div class="flex justify-between text-xs text-slate-400 mt-2 font-mono">
+                <span>0:00</span>
+                <span id="totalDurationLabel">0:00</span>
+            </div>
+        </div>
+
+        <!-- START & END Cards (ပုံထဲက ဒီဇိုင်းအတိုင်း) -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-3">
             
-            <!-- File Info & Active Engine Badge -->
-            <div id="fileInfoBar" class="hidden mt-2 flex flex-wrap items-center justify-between text-xs bg-slate-900/80 px-3 py-2 rounded-lg border border-slate-700">
-                <span id="fileSizeText" class="text-slate-300 font-medium"></span>
-                <span id="routeBadge" class="px-2 py-0.5 rounded font-semibold"></span>
-            </div>
-        </div>
-
-        <!-- 2. Video Preview Player -->
-        <div id="playerContainer" class="hidden mb-6">
-            <video id="videoPlayer" controls class="w-full rounded-lg max-h-80 bg-black mb-2 border border-slate-700"></video>
-            <p class="text-xs text-slate-400 text-center">Video ကို ဖွင့်ကြည့်ပြီး ဖြတ်ချင်သည့်နေရာရောက်လျှင် အောက်ပါခလုတ်များဖြင့် အချိန်မှတ်ပါ</p>
-        </div>
-
-        <!-- 3. Start & End Time Controls -->
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-            <div class="bg-slate-900 p-3 rounded-lg border border-slate-700">
-                <label class="block text-xs text-slate-400 mb-1">စတင်မည့်အချိန် (Start Time)</label>
-                <div class="flex gap-2">
-                    <input type="text" id="startTime" value="00:00:00.0" 
-                        class="w-full bg-slate-800 border border-slate-600 rounded px-3 py-1.5 text-sm focus:outline-none focus:border-blue-500">
-                    <button type="button" onclick="setStartTime()" 
-                        class="bg-blue-600/30 hover:bg-blue-600/50 border border-blue-500/40 text-blue-200 text-xs px-3 py-1.5 rounded whitespace-nowrap">
-                        လက်ရှိအချိန်ယူမည်
+            <!-- START Box -->
+            <div class="bg-slate-900/90 p-4 rounded-2xl border border-slate-700">
+                <div class="flex items-center justify-between mb-2">
+                    <span class="text-xs font-bold tracking-wider text-slate-400">START</span>
+                    <button type="button" onclick="setStartTimeFromPlayer()" 
+                        class="text-xs font-semibold text-emerald-400 hover:text-emerald-300 flex items-center gap-1">
+                        <span>⊕</span> Use current time
                     </button>
+                </div>
+                <input type="text" id="startTimeInput" value="0:00:00.0" onchange="onManualTimeChange('start')"
+                    class="w-full bg-slate-800 border border-slate-700 rounded-xl px-3.5 py-2.5 text-lg font-mono font-medium text-white focus:outline-none focus:border-emerald-500 mb-3">
+                <div class="flex gap-1.5 justify-between">
+                    <button type="button" onclick="adjustTime('start', -1)" class="flex-1 bg-slate-800 hover:bg-slate-700 border border-slate-600 rounded-full py-1 text-xs font-medium text-slate-300 transition">− 1s</button>
+                    <button type="button" onclick="adjustTime('start', -0.1)" class="flex-1 bg-slate-800 hover:bg-slate-700 border border-slate-600 rounded-full py-1 text-xs font-medium text-slate-300 transition">− 0.1s</button>
+                    <button type="button" onclick="adjustTime('start', 0.1)" class="flex-1 bg-slate-800 hover:bg-slate-700 border border-slate-600 rounded-full py-1 text-xs font-medium text-slate-300 transition">+ 0.1s</button>
+                    <button type="button" onclick="adjustTime('start', 1)" class="flex-1 bg-slate-800 hover:bg-slate-700 border border-slate-600 rounded-full py-1 text-xs font-medium text-slate-300 transition">+ 1s</button>
                 </div>
             </div>
 
-            <div class="bg-slate-900 p-3 rounded-lg border border-slate-700">
-                <label class="block text-xs text-slate-400 mb-1">ပြီးဆုံးမည့်အချိန် (End Time)</label>
-                <div class="flex gap-2">
-                    <input type="text" id="endTime" value="00:00:10.0" 
-                        class="w-full bg-slate-800 border border-slate-600 rounded px-3 py-1.5 text-sm focus:outline-none focus:border-blue-500">
-                    <button type="button" onclick="setEndTime()" 
-                        class="bg-blue-600/30 hover:bg-blue-600/50 border border-blue-500/40 text-blue-200 text-xs px-3 py-1.5 rounded whitespace-nowrap">
-                        လက်ရှိအချိန်ယူမည်
+            <!-- END Box -->
+            <div class="bg-slate-900/90 p-4 rounded-2xl border border-slate-700">
+                <div class="flex items-center justify-between mb-2">
+                    <span class="text-xs font-bold tracking-wider text-slate-400">END</span>
+                    <button type="button" onclick="setEndTimeFromPlayer()" 
+                        class="text-xs font-semibold text-amber-400 hover:text-amber-300 flex items-center gap-1">
+                        <span>⊕</span> Use current time
                     </button>
                 </div>
+                <input type="text" id="endTimeInput" value="0:00:10.0" onchange="onManualTimeChange('end')"
+                    class="w-full bg-slate-800 border border-slate-700 rounded-xl px-3.5 py-2.5 text-lg font-mono font-medium text-white focus:outline-none focus:border-amber-500 mb-3">
+                <div class="flex gap-1.5 justify-between">
+                    <button type="button" onclick="adjustTime('end', -1)" class="flex-1 bg-slate-800 hover:bg-slate-700 border border-slate-600 rounded-full py-1 text-xs font-medium text-slate-300 transition">− 1s</button>
+                    <button type="button" onclick="adjustTime('end', -0.1)" class="flex-1 bg-slate-800 hover:bg-slate-700 border border-slate-600 rounded-full py-1 text-xs font-medium text-slate-300 transition">− 0.1s</button>
+                    <button type="button" onclick="adjustTime('end', 0.1)" class="flex-1 bg-slate-800 hover:bg-slate-700 border border-slate-600 rounded-full py-1 text-xs font-medium text-slate-300 transition">+ 0.1s</button>
+                    <button type="button" onclick="adjustTime('end', 1)" class="flex-1 bg-slate-800 hover:bg-slate-700 border border-slate-600 rounded-full py-1 text-xs font-medium text-slate-300 transition">+ 1s</button>
+                </div>
             </div>
+
         </div>
 
-        <!-- 4. Cut Mode & Engine Selection -->
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+        <!-- Clip Length & Estimated File Size Summary -->
+        <div class="flex flex-wrap items-center justify-between text-xs text-slate-400 px-1 mb-5 gap-2">
             <div>
-                <label class="block text-xs text-slate-400 mb-1">ဖြတ်မည့် ပုံစံ (Cut Mode)</label>
-                <select id="cutMode" onchange="updateRoutingBadge()" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-sm text-slate-200">
+                Clip length: <strong id="clipLengthText" class="text-white font-semibold">0 min 10 s</strong>
+                <span class="mx-1">·</span>
+                <span id="clipRangeText" class="font-mono text-slate-400">0:00:00.0 → 0:00:10.0</span>
+            </div>
+            <div id="estSizeBadge" class="hidden bg-slate-900 border border-slate-700 text-emerald-400 px-2.5 py-1 rounded-full font-medium">
+                📦 ခန့်မှန်းခြေ Size: ~0 MB
+            </div>
+        </div>
+
+        <!-- Cut Mode & Engine -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-3 mb-5">
+            <div>
+                <label class="block text-xs text-slate-400 mb-1.5">ဖြတ်မည့် ပုံစံ (Cut Mode)</label>
+                <select id="cutMode" class="w-full bg-slate-900 border border-slate-700 rounded-xl p-2.5 text-sm text-slate-200">
                     <option value="lossless">⚡ Fast Lossless (Size လုံးဝမတက်ပါ)</option>
-                    <option value="accurate">🎯 Exact Frame (Re-encode)</option>
+                    <option value="accurate">🎯 Exact Frame Cut (Re-encode)</option>
                 </select>
             </div>
             <div>
-                <label class="block text-xs text-slate-400 mb-1">အလုပ်လုပ်မည့် စနစ် (Engine)</label>
-                <select id="engineMode" onchange="updateRoutingBadge()" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-sm text-slate-200">
+                <label class="block text-xs text-slate-400 mb-1.5">အလုပ်လုပ်မည့် စနစ် (Engine)</label>
+                <select id="engineMode" class="w-full bg-slate-900 border border-slate-700 rounded-xl p-2.5 text-sm text-slate-200">
                     <option value="auto">🤖 Auto Hybrid (အလိုအလျောက် ရွေးမည်)</option>
-                    <option value="client">📱 Browser Only (Data လုံးဝမကုန်ပါ)</option>
-                    <option value="server">☁️ Server Only (ဖိုင်အကြီးများအတွက်)</option>
+                    <option value="client">📱 Client-side (Data မကုန်ပါ)</option>
+                    <option value="server">☁️ Server-side (Render Server)</option>
                 </select>
             </div>
         </div>
 
-        <!-- 5. Progress Bar -->
-        <div id="progressContainer" class="hidden mb-5 bg-slate-900 p-4 rounded-xl border border-slate-700">
-            <div class="flex justify-between text-xs mb-2">
-                <span id="statusText" class="text-blue-300 font-medium">ပြင်ဆင်နေပါသည်...</span>
-                <span id="percentText" class="text-slate-300 font-bold">0%</span>
+        <!-- Status & Progress Bar -->
+        <div id="statusBox" class="hidden mb-4 p-3.5 rounded-xl bg-slate-900 border border-blue-800">
+            <div class="flex justify-between text-xs text-blue-300 mb-1.5">
+                <span id="statusText">⏳ ပြင်ဆင်နေပါသည်...</span>
+                <span id="progressPercent">0%</span>
             </div>
-            <div class="w-full bg-slate-700 rounded-full h-2.5 overflow-hidden">
-                <div id="progressBar" class="bg-blue-500 h-2.5 rounded-full transition-all duration-200" style="width: 0%"></div>
+            <div class="w-full bg-slate-700 rounded-full h-2">
+                <div id="progressBar" class="bg-blue-500 h-2 rounded-full transition-all duration-200" style="width: 0%"></div>
             </div>
         </div>
 
-        <!-- 6. Submit Button -->
+        <!-- Submit Button -->
         <button id="cutBtn" onclick="processVideo()" 
-            class="w-full bg-blue-600 hover:bg-blue-500 font-semibold py-3 rounded-xl shadow-lg transition duration-200">
+            class="w-full bg-blue-600 hover:bg-blue-500 font-semibold py-3.5 rounded-xl shadow-lg transition duration-200">
             ✂️ Video ဖြတ်ပြီး Download ဆွဲမည်
         </button>
     </div>
 
     <script>
-        const CLIENT_MAX_MB = 300; // 300MB အောက်ဆိုလျှင် Browser ဖြင့် အလိုအလျောက်ဖြတ်မည်
-        let ffmpeg
+        const videoInput = document.getElementById('videoInput');
+        const videoPlayer = document.getElementById('videoPlayer');
+        const playerContainer = document.getElementById('playerContainer');
+        const startSlider = document.getElementById('startSlider');
+        const endSlider = document.getElementById('endSlider');
+        const rangeSelected = document.getElementById('rangeSelected');
+        const startTimeInput = document.getElementById('startTimeInput');
+        const endTimeInput = document.getElementById('endTimeInput');
+        const totalDurationLabel = document.getElementById('totalDurationLabel');
+        const clipLengthText = document.getElementById('clipLengthText');
+        const clipRangeText = document.getElementById('clipRangeText');
+        const estSizeBadge = document.getElementById('estSizeBadge');
+        const statusBox = document.getElementById('statusBox');
+        const statusText = document.getElementById('statusText');
+        const progressPercent = document.getElementById('progressPercent');
+        const progressBar = document.getElementById('progressBar');
+        const cutBtn = document.getElementById('cutBtn');
+
+        let videoDuration = 10;
+        let originalFileSizeMB = 0;
+        let startSec = 0;
+        let endSec = 10;
+
+        // စက္ကန့်ကို H:MM:SS.d သို့ ပြောင်းခြင်း (ပုံထဲက Format အတိုင်း)
+        function formatTime(seconds) {
+            if (isNaN(seconds) || seconds < 0) seconds = 0;
+            const hrs = Math.floor(seconds / 3600);
+            const mins = Math.floor((seconds % 3600) / 60);
+            const secs = (seconds % 60).toFixed(1);
+            return `${hrs}:${String(mins).padStart(2, '0')}:${String(secs).padStart(4, '0')}`;
+        }
+
+        // H:MM:SS.d စာသားကို စက္ကန့်သို့ ပြန်ပြောင်းခြင်း
+        function parseTime(timeStr) {
+            const parts = timeStr.trim().split(':').map(Number);
+            if (parts.some(isNaN)) return 0;
+            if (parts.length === 3) return parts[0] * 3600 + parts[1] * 60 + parts[2];
+            if (parts.length === 2) return parts[0] * 60 + parts[1];
+            return parts[0] || 0;
+        }
+
+        // Clip length အတွက် X min Y s ပုံစံပြောင်းခြင်း
+        function formatDurationWords(seconds) {
+            if (seconds <= 0) return "0 s";
+            const hrs = Math.floor(seconds / 3600);
+            const mins = Math.floor((seconds % 3600) / 60);
+            const secs = Math.round(seconds % 60);
+            let result = [];
+            if (hrs > 0) result.push(`${hrs} hr`);
+            if (mins > 0) result.push(`${mins} min`);
+            result.push(`${secs} s`);
+            return result.join(' ');
+        }
+
+        // Slider နှင့် UI အားလုံးကို တစ်ပြေးညီ Update လုပ်ပေးသည့် Function
+        function syncUI(seekTarget = null) {
+            startSec = Math.max(0, Math.min(startSec, videoDuration));
+            endSec = Math.max(startSec + 0.1, Math.min(endSec, videoDuration));
+
+            startSlider.value = startSec;
+            endSlider.value = endSec;
+
+            const leftPercent = (startSec / videoDuration) * 100;
+            const rightPercent = 100 - (endSec / videoDuration) * 100;
+            rangeSelected.style.left = `${leftPercent}%`;
+            rangeSelected.style.right = `${rightPercent}%`;
+
+            const startFormatted = formatTime(startSec);
+            const endFormatted = formatTime(endSec);
+            startTimeInput.value = startFormatted;
+            endTimeInput.value = endFormatted;
+
+            const clipDuration = Math.max(0, endSec - startSec);
+            clipLengthText.innerText = formatDurationWords(clipDuration);
+            clipRangeText.innerText = `${startFormatted} → ${endFormatted}`;
+
+            if (originalFileSizeMB > 0 && videoDuration > 0) {
+                const estMB = ((clipDuration / videoDuration) * originalFileSizeMB).toFixed(1);
+                estSizeBadge.innerText = `📦 မူရင်း ${originalFileSizeMB.toFixed(1)} MB → ဖြတ်ပြီး ~${estMB} MB`;
+                estSizeBadge.classList.remove('hidden');
+            }
+
+            if (seekTarget === 'start' && videoPlayer.readyState >= 1) {
+                videoPlayer.currentTime = startSec;
+            } else if (seekTarget === 'end' && videoPlayer.readyState >= 1) {
+                videoPlayer.currentTime = endSec;
+            }
+        }
+
+        // Video ဖိုင်ရွေးချယ်သည့်အခါ
+        videoInput.addEventListener('change', function() {
+            const file = this.files[0];
+            if (file) {
+                originalFileSizeMB = file.size / (1024 * 1024);
+                const url = URL.createObjectURL(file);
+                videoPlayer.src = url;
+                playerContainer.classList.remove('hidden');
+
+                videoPlayer.onloadedmetadata = () => {
+                    videoDuration = videoPlayer.duration || 10;
+                    startSlider.max = videoDuration;
+                    endSlider.max = videoDuration;
+                    startSec = 0;
+                    endSec = videoDuration;
+                    totalDurationLabel.innerText = formatTime(videoDuration);
+                    syncUI();
+                };
+            }
+        });
+
+        // Slider ဆွဲသည့်အခါ
+        startSlider.addEventListener('input', () => {
+            startSec = parseFloat(startSlider.value);
+            if (startSec >= endSec - 0.1) startSec = endSec - 0.1;
+            syncUI('start');
+        });
+
+        endSlider.addEventListener('input', () => {
+            endSec = parseFloat(endSlider.value);
+            if (endSec <= startSec + 0.1) endSec = startSec + 0.1;
+            syncUI('end');
+        });
+
+        // -1s, -0.1s, +0.1s, +1s ခလုတ်များ နှိပ်သည့်အခါ
+        function adjustTime(type, delta) {
+            if (type === 'start') {
+                startSec = Math.max(0, Math.min(endSec - 0.1, +(startSec + delta).toFixed(1)));
+                syncUI('start');
+            } else {
+                endSec = Math.max(startSec + 0.1, Math.min(videoDuration, +(endSec + delta).toFixed(1)));
+                syncUI('end');
+            }
+        }
+
+        // Use current time ခလုတ်များ
+        function setStartTimeFromPlayer() {
+            startSec = videoPlayer.currentTime;
+            if (startSec >= endSec) endSec = Math.min(videoDuration, startSec + 1);
+            syncUI();
+        }
+
+        function setEndTimeFromPlayer() {
+            endSec = videoPlayer.currentTime;
+            if (endSec <= startSec) startSec = Math.max(0, endSec - 1);
+            syncUI();
+        }
+
+        // စာရိုက်ပြီး အချိန်ပြင်သည့်အခါ
+        function onManualTimeChange(type) {
+            if (type === 'start') {
+                startSec = parseTime(startTimeInput.value);
+                syncUI('start');
+            } else {
+                endSec = parseTime(endTimeInput.value);
+                syncUI('end');
+            }
+        }
+
+        function updateProgress(text, percent) {
+            statusBox.classList.remove('hidden');
+            statusText.innerText = text;
+            progressPercent.innerText = `${percent}%`;
+            progressBar.style.width = `${percent}%`;
+        }
+
+        // Server-side Cut
+        function cutOnServer(file, startTime, endTime, cutMode) {
+            return new Promise((resolve, reject) => {
+                const xhr = new XMLHttpRequest();
+                const formData = new FormData();
+                formData.append("file", file);
+                formData.append("start_time", startTime);
+                formData.append("end_time", endTime);
+                formData.append("mode", cutMode);
+
+                xhr.open("POST", "/cut", true);
+                xhr.responseType = "blob";
+
+                xhr.upload.onprogress = (e) => {
+                    if (e.lengthComputable) {
+                        const percent = Math.round((e.loaded / e.total) * 80);
+                        updateProgress("☁️ Server သို့ Upload တင်နေသည်...", percent);
+                    }
+                };
+
+                xhr.onload = () => {
+                    if (xhr.status === 200) {
+                        updateProgress("✅ ဖြတ်ပြီးပါပြီ! Download ဆွဲနေသည်...", 100);
+                        resolve(xhr.response);
+                    } else {
+                        reject(new Error("Server မှ Video ဖြတ်ရာတွင် အမှားရှိပါသည်။"));
+                    }
+                };
+
+                xhr.onerror = () => reject(new Error("Network အဆက်အသွယ် ပြတ်တောက်သွားပါသည်။"));
+                xhr.send(formData);
+            });
+        }
+
+        // Client-side (FFmpeg.wasm) Cut
+        async function cutOnClient(file, startTime, endTime) {
+            updateProgress("📦 Browser Engine ကို ချိတ်ဆက်နေသည်...", 15);
+
+            if (!window.FFmpegWASM) {
+                await new Promise((res, rej) => {
+                    const s1 = document.createElement('script');
+                    s1.src = "https://unpkg.com/@ffmpeg/ffmpeg@0.12.10/dist/umd/ffmpeg.js";
+                    s1.onload = res;
+                    s1.onerror = rej;
+                    document.head.appendChild(s1);
+                });
+            }
+
+            const { FFmpeg } = window.FFmpegWASM;
+            const ffmpeg = new FFmpeg();
+
+            ffmpeg.on("progress", ({ progress }) => {
+                const p = Math.min(95, Math.max(30, Math.round(progress * 100)));
+                updateProgress("⚡ Browser ထဲတွင် အမြန်ဖြတ်နေသည်...", p);
+            });
+
+            const baseURL = "https://unpkg.com/@ffmpeg/core@0.12.6/dist/umd";
+            const toBlobURL = async (url, mimeType) => {
+                const resp = await fetch(url);
+                const buf = await resp.arrayBuffer();
+                return URL.createObjectURL(new Blob([buf], { type: mimeType }));
+            };
+
+            const workerBlobURL = await toBlobURL(
+                "https://unpkg.com/@ffmpeg/ffmpeg@0.12.10/dist/umd/814.ffmpeg.js",
+                "text/javascript"
+            );
+
+            await ffmpeg.load({
+                coreURL: await toBlobURL(`${baseURL}/ffmpeg-core.js`, "text/javascript"),
+                wasmURL: await toBlobURL(`${baseURL}/ffmpeg-core.wasm`, "application/wasm"),
+                classWorkerURL: workerBlobURL
+            });
+
+            updateProgress("📂 Video ဖိုင်ကို ဖတ်နေသည်...", 40);
+            const ext = file.name.substring(file.name.lastIndexOf('.')) || ".mp4";
+            const inName = "input" + ext;
+            const outName = "output" + ext;
+
+            const fileData = new Uint8Array(await file.arrayBuffer());
+            await ffmpeg.writeFile(inName, fileData);
+
+            updateProgress("✂️ Video ဖြတ်တောက်နေသည်...", 65);
+            await ffmpeg.exec([
+                "-ss", startTime,
+                "-to", endTime,
+                "-i", inName,
+                "-c", "copy",
+                outName
+            ]);
+
+            const data = await ffmpeg.readFile(outName);
+            updateProgress("✅ ပြီးဆုံးပါပြီ!", 100);
+            return new Blob([data.buffer], { type: "video/mp4" });
+        }
+
+        async function processVideo() {
+            const file = videoInput.files[0];
+            if (!file) {
+                alert("ကျေးဇူးပြု၍ Video ဖိုင်အရင်ရွေးပေးပါ။");
+                return;
+            }
+
+            const startTime = startTimeInput.value.trim();
+            const endTime = endTimeInput.value.trim();
+            const cutMode = document.getElementById('cutMode').value;
+            const engineMode = document.getElementById('engineMode').value;
+
+            cutBtn.disabled = true;
+            cutBtn.classList.add('opacity-50', 'cursor-not-allowed');
+
+            try {
+                let resultBlob;
+                const shouldTryClient =
+                    engineMode === "client" ||
+                    (engineMode === "auto" && originalFileSizeMB <= 300 && cutMode === "lossless");
+
+                if (shouldTryClient) {
+                    try {
+                        resultBlob = await cutOnClient(file, startTime, endTime);
+                    } catch (clientErr) {
+                        console.warn("Client-side fallback to server:", clientErr);
+                        if (engineMode === "client") {
+                            throw new Error("ဖုန်း Browser ကန့်သတ်ချက်ကြောင့် Client-side မရပါ။ Auto သို့မဟုတ် Server-side ကို ရွေးပေးပါ။");
+                        }
+                        updateProgress("🔄 Server-side စနစ်သို့ အလိုအလျောက် ပြောင်းနေသည်...", 10);
+                        resultBlob = await cutOnServer(file, startTime, endTime, cutMode);
+                    }
+                } else {
+                    resultBlob = await cutOnServer(file, startTime, endTime, cutMode);
+                }
+
+                const downloadUrl = URL.createObjectURL(resultBlob);
+                const a = document.createElement('a');
+                a.href = downloadUrl;
+                a.download = `cut_${file.name}`;
+                document.body.appendChild(a);
+                a.click();
+                a.remove();
+                URL.revokeObjectURL(downloadUrl);
+
+            } catch (error) {
+                alert("အမှားအယွင်းရှိပါသည်: " + error.message);
+            } finally {
+                cutBtn.disabled = false;
+                cutBtn.classList.remove('opacity-50', 'cursor-not-allowed');
+                setTimeout(() => statusBox.classList.add('hidden'), 3000);
+            }
+        }
+    </script>
+</body>
+</html>
