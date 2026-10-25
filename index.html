@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="my">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hybrid Lossless Video Cutter</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FFmpeg.wasm libraries for Client-side cutting -->
+    <script src="https://unpkg.com/@ffmpeg/ffmpeg@0.12.10/dist/umd/ffmpeg.js"></script>
+    <script src="https://unpkg.com/@ffmpeg/util@0.12.1/dist/umd/index.js"></script>
+</head>
+<body class="bg-slate-900 text-white min-h-screen flex items-center justify-center p-4">
+
+    <div class="bg-slate-800 p-6 rounded-2xl shadow-2xl w-full max-w-2xl border border-slate-700">
+        <div class="flex items-center justify-between mb-2">
+            <h1 class="text-2xl font-bold text-blue-400">✂️ Hybrid Video Cutter</h1>
+            <span class="text-xs bg-blue-500/20 text-blue-300 border border-blue-500/40 px-2.5 py-1 rounded-full">
+                Client + Server Mode
+            </span>
+        </div>
+        <p class="text-sm text-slate-400 mb-6">File size လုံးဝမကြီးသွားဘဲ မူရင်း Quality အတိုင်း အမြန်ဖြတ်ယူပါ</p>
+
+        <!-- 1. File Upload -->
+        <div class="mb-4">
+            <label class="block text-sm font-medium mb-2">၁။ Video ဖိုင်ရွေးချယ်ပါ</label>
+            <input type="file" id="videoInput" accept="video/*" 
+                class="block w-full text-sm text-slate-300 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-blue-600 file:text-white hover:file:bg-blue-700 cursor-pointer bg-slate-900 rounded-lg p-2 border border-slate-700">
+            
+            <!-- File Info & Active Engine Badge -->
+            <div id="fileInfoBar" class="hidden mt-2 flex flex-wrap items-center justify-between text-xs bg-slate-900/80 px-3 py-2 rounded-lg border border-slate-700">
+                <span id="fileSizeText" class="text-slate-300 font-medium"></span>
+                <span id="routeBadge" class="px-2 py-0.5 rounded font-semibold"></span>
+            </div>
+        </div>
+
+        <!-- 2. Video Preview Player -->
+        <div id="playerContainer" class="hidden mb-6">
+            <video id="videoPlayer" controls class="w-full rounded-lg max-h-80 bg-black mb-2 border border-slate-700"></video>
+            <p class="text-xs text-slate-400 text-center">Video ကို ဖွင့်ကြည့်ပြီး ဖြတ်ချင်သည့်နေရာရောက်လျှင် အောက်ပါခလုတ်များဖြင့် အချိန်မှတ်ပါ</p>
+        </div>
+
+        <!-- 3. Start & End Time Controls -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+            <div class="bg-slate-900 p-3 rounded-lg border border-slate-700">
+                <label class="block text-xs text-slate-400 mb-1">စတင်မည့်အချိန် (Start Time)</label>
+                <div class="flex gap-2">
+                    <input type="text" id="startTime" value="00:00:00.0" 
+                        class="w-full bg-slate-800 border border-slate-600 rounded px-3 py-1.5 text-sm focus:outline-none focus:border-blue-500">
+                    <button type="button" onclick="setStartTime()" 
+                        class="bg-blue-600/30 hover:bg-blue-600/50 border border-blue-500/40 text-blue-200 text-xs px-3 py-1.5 rounded whitespace-nowrap">
+                        လက်ရှိအချိန်ယူမည်
+                    </button>
+                </div>
+            </div>
+
+            <div class="bg-slate-900 p-3 rounded-lg border border-slate-700">
+                <label class="block text-xs text-slate-400 mb-1">ပြီးဆုံးမည့်အချိန် (End Time)</label>
+                <div class="flex gap-2">
+                    <input type="text" id="endTime" value="00:00:10.0" 
+                        class="w-full bg-slate-800 border border-slate-600 rounded px-3 py-1.5 text-sm focus:outline-none focus:border-blue-500">
+                    <button type="button" onclick="setEndTime()" 
+                        class="bg-blue-600/30 hover:bg-blue-600/50 border border-blue-500/40 text-blue-200 text-xs px-3 py-1.5 rounded whitespace-nowrap">
+                        လက်ရှိအချိန်ယူမည်
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- 4. Cut Mode & Engine Selection -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+            <div>
+                <label class="block text-xs text-slate-400 mb-1">ဖြတ်မည့် ပုံစံ (Cut Mode)</label>
+                <select id="cutMode" onchange="updateRoutingBadge()" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-sm text-slate-200">
+                    <option value="lossless">⚡ Fast Lossless (Size လုံးဝမတက်ပါ)</option>
+                    <option value="accurate">🎯 Exact Frame (Re-encode)</option>
+                </select>
+            </div>
+            <div>
+                <label class="block text-xs text-slate-400 mb-1">အလုပ်လုပ်မည့် စနစ် (Engine)</label>
+                <select id="engineMode" onchange="updateRoutingBadge()" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-sm text-slate-200">
+                    <option value="auto">🤖 Auto Hybrid (အလိုအလျောက် ရွေးမည်)</option>
+                    <option value="client">📱 Browser Only (Data လုံးဝမကုန်ပါ)</option>
+                    <option value="server">☁️ Server Only (ဖိုင်အကြီးများအတွက်)</option>
+                </select>
+            </div>
+        </div>
+
+        <!-- 5. Progress Bar -->
+        <div id="progressContainer" class="hidden mb-5 bg-slate-900 p-4 rounded-xl border border-slate-700">
+            <div class="flex justify-between text-xs mb-2">
+                <span id="statusText" class="text-blue-300 font-medium">ပြင်ဆင်နေပါသည်...</span>
+                <span id="percentText" class="text-slate-300 font-bold">0%</span>
+            </div>
+            <div class="w-full bg-slate-700 rounded-full h-2.5 overflow-hidden">
+                <div id="progressBar" class="bg-blue-500 h-2.5 rounded-full transition-all duration-200" style="width: 0%"></div>
+            </div>
+        </div>
+
+        <!-- 6. Submit Button -->
+        <button id="cutBtn" onclick="processVideo()" 
+            class="w-full bg-blue-600 hover:bg-blue-500 font-semibold py-3 rounded-xl shadow-lg transition duration-200">
+            ✂️ Video ဖြတ်ပြီး Download ဆွဲမည်
+        </button>
+    </div>
+
+    <script>
+        const CLIENT_MAX_MB = 300; // 300MB အောက်ဆိုလျှင် Browser ဖြင့် အလိုအလျောက်ဖြတ်မည်
+        let ffmpeg
