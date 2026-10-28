@@ -3,9 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Hybrid Video Cutter</title>
+    <title>Hybrid Video & Bilibili Cutter</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://www.youtube.com/iframe_api"></script>
     <style>
         .range-slider {
             position: relative;
@@ -71,42 +70,61 @@
         <div class="flex items-center justify-between mb-2">
             <h1 class="text-2xl font-bold text-blue-400 leading-tight">✂️ Hybrid Video Cutter</h1>
             <span class="text-xs bg-blue-950/80 text-blue-300 border border-blue-800 px-3 py-1.5 rounded-full">
-                Link + File Mode
+                Local + Bilibili
             </span>
         </div>
-        <p class="text-sm text-slate-400 mb-5">မည်သည့် Video Link ကိုမဆို သို့မဟုတ် ဖုန်းထဲမှ Video ဖိုင်ကို File size မကြီးသွားဘဲ အမြန်ဖြတ်ယူပါ</p>
+        <p class="text-sm text-slate-400 mb-5">File size လုံးဝမကြီးသွားဘဲ မူရင်း Quality အတိုင်း အမြန်ဖြတ်ယူပါ</p>
 
-        <!-- ပုံထဲကအတိုင်း Video Link ထည့်သွင်းသည့် အကွက် -->
-        <div class="mb-4">
-            <label class="block text-xs text-slate-400 mb-1.5">၁။ Video Link ထည့်ရန် (YouTube, TikTok, FB, Direct MP4 စသဖြင့် မည်သည့် Link မဆို)</label>
-            <div class="flex items-center bg-slate-900 border border-slate-700 rounded-full p-1.5 pl-4 focus-within:border-emerald-500 transition">
-                <span class="text-emerald-400 mr-2.5 text-lg select-none">🔗</span>
-                <input type="url" id="videoUrlInput" placeholder="https://www.youtube.com/watch?v=..." 
-                    class="w-full bg-transparent text-sm text-white focus:outline-none pr-2">
-                <button type="button" id="loadUrlBtn" onclick="loadFromUrl()" 
-                    class="bg-emerald-600 hover:bg-emerald-500 text-white text-xs sm:text-sm font-semibold px-4 py-2.5 rounded-full whitespace-nowrap flex items-center gap-1.5 shadow transition">
-                    <span>✂️</span> Load video
+        <!-- Source Mode Tabs -->
+        <div class="grid grid-cols-2 gap-2 bg-slate-900 p-1.5 rounded-xl border border-slate-700 mb-5">
+            <button id="tabLocal" onclick="switchTab('local')" 
+                class="py-2.5 text-sm font-semibold rounded-lg bg-blue-600 text-white transition">
+                📁 ဖုန်း/စက်ထဲမှ Video
+            </button>
+            <button id="tabBili" onclick="switchTab('bilibili')" 
+                class="py-2.5 text-sm font-semibold rounded-lg text-slate-400 hover:text-white transition">
+                📺 Bilibili Link
+            </button>
+        </div>
+
+        <!-- TAB 1: Local Video Input -->
+        <div id="localSection" class="mb-4">
+            <label class="block text-sm font-medium mb-2">၁။ Video ဖိုင်ရွေးချယ်ပါ</label>
+            <input type="file" id="videoInput" accept="video/*" 
+                class="block w-full text-sm text-slate-300 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-blue-600 file:text-white hover:file:bg-blue-700 cursor-pointer bg-slate-900 rounded-xl p-2.5 border border-slate-700">
+        </div>
+
+        <!-- TAB 2: Bilibili URL Input -->
+        <div id="biliSection" class="hidden mb-4">
+            <label class="block text-sm font-medium mb-2">၁။ Bilibili Video Link ထည့်ပါ</label>
+            <div class="flex gap-2">
+                <input type="url" id="biliUrlInput" placeholder="https://www.bilibili.com/video/BV... သို့မဟုတ် b23.tv/..." 
+                    class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3.5 py-2.5 text-sm text-white focus:outline-none focus:border-pink-500">
+                <button type="button" id="fetchBiliBtn" onclick="fetchBilibiliInfo()" 
+                    class="bg-pink-600 hover:bg-pink-500 text-white font-semibold px-4 py-2.5 rounded-xl text-sm whitespace-nowrap transition">
+                    🔍 ရှာမည်
+                </button>
+            </div>
+
+            <!-- Bilibili Video Info Card -->
+            <div id="biliInfoCard" class="hidden mt-3 bg-slate-900 p-3 rounded-xl border border-slate-700 flex items-center justify-between gap-3">
+                <div class="truncate">
+                    <p id="biliTitle" class="text-sm font-semibold text-pink-400 truncate"></p>
+                    <p id="biliDurationText" class="text-xs text-slate-400 mt-0.5"></p>
+                </div>
+                <button type="button" id="loadPreviewBtn" onclick="loadBilibiliPreview()" 
+                    class="bg-slate-800 hover:bg-slate-700 border border-slate-600 text-xs px-3 py-2 rounded-lg text-slate-200 whitespace-nowrap">
+                    🎥 Player ဖြင့် ဖွင့်ကြည့်မည်
                 </button>
             </div>
         </div>
 
-        <!-- သို့မဟုတ် ဖုန်း/စက်ထဲမှ ဖိုင်ရွေးရန် -->
-        <div class="mb-5">
-            <label class="block text-xs text-slate-400 mb-1.5">သို့မဟုတ် ဖုန်း/ကွန်ပျူတာထဲမှ Video ဖိုင်ရွေးချယ်ပါ</label>
-            <input type="file" id="videoInput" accept="video/*" 
-                class="block w-full text-sm text-slate-300 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-blue-600 file:text-white hover:file:bg-blue-700 cursor-pointer bg-slate-900 rounded-xl p-2 border border-slate-700">
-            <p id="loadedTitle" class="text-xs text-emerald-400 mt-2 hidden font-medium"></p>
-        </div>
-
-        <!-- Video Preview Player (HTML5 Video + YouTube Player) -->
+        <!-- Video Preview Player -->
         <div id="playerContainer" class="hidden mb-5 bg-slate-950 p-2.5 rounded-xl border border-slate-700">
-            <video id="videoPlayer" controls playsinline class="w-full rounded-lg max-h-72 bg-black hidden"></video>
-            <div id="ytPlayerWrapper" class="w-full aspect-video rounded-lg overflow-hidden bg-black hidden">
-                <div id="ytPlayer"></div>
-            </div>
+            <video id="videoPlayer" controls playsinline class="w-full rounded-lg max-h-72 bg-black"></video>
         </div>
 
-        <!-- Timeline Slider (အစိမ်း/အဝါ Slider) -->
+        <!-- Timeline Slider Section (အစိမ်း/အဝါ Slider) -->
         <div class="mb-5 px-1">
             <div class="relative pt-2 pb-1">
                 <div class="range-slider">
@@ -117,7 +135,7 @@
             </div>
             <div class="flex justify-between text-xs text-slate-400 mt-2 font-mono">
                 <span>0:00</span>
-                <span id="totalDurationLabel">0:00</span>
+                <span id="totalDurationLabel">0:10</span>
             </div>
         </div>
 
@@ -165,7 +183,7 @@
         <!-- Clip Length Summary -->
         <div class="flex flex-wrap items-center justify-between text-xs text-slate-400 px-1 mb-5 gap-2">
             <div>
-                Clip length: <strong id="clipLengthText" class="text-white font-semibold">0 min 10 s</strong>
+                Clip length: <strong id="clipLengthText" class="text-white font-semibold">10 s</strong>
                 <span class="mx-1">·</span>
                 <span id="clipRangeText" class="font-mono text-slate-400">0:00:00.0 → 0:00:10.0</span>
             </div>
@@ -174,7 +192,7 @@
             </div>
         </div>
 
-        <!-- Cut Mode & Engine -->
+        <!-- Options -->
         <div class="grid grid-cols-1 md:grid-cols-2 gap-3 mb-5">
             <div>
                 <label class="block text-xs text-slate-400 mb-1.5">ဖြတ်မည့် ပုံစံ (Cut Mode)</label>
@@ -183,12 +201,24 @@
                     <option value="accurate">🎯 Exact Frame Cut (Re-encode)</option>
                 </select>
             </div>
-            <div>
+
+            <!-- Local Engine Selector -->
+            <div id="engineWrapper">
                 <label class="block text-xs text-slate-400 mb-1.5">အလုပ်လုပ်မည့် စနစ် (Engine)</label>
                 <select id="engineMode" class="w-full bg-slate-900 border border-slate-700 rounded-xl p-2.5 text-sm text-slate-200">
                     <option value="auto">🤖 Auto Hybrid (အလိုအလျောက် ရွေးမည်)</option>
-                    <option value="client">📱 Client-side (File အသေးအတွက်)</option>
+                    <option value="client">📱 Client-side (Data မကုန်ပါ)</option>
                     <option value="server">☁️ Server-side (Render Server)</option>
+                </select>
+            </div>
+
+            <!-- Bilibili Quality Selector -->
+            <div id="qualityWrapper" class="hidden">
+                <label class="block text-xs text-slate-400 mb-1.5">Bilibili Video Quality</label>
+                <select id="biliQuality" class="w-full bg-slate-900 border border-slate-700 rounded-xl p-2.5 text-sm text-slate-200">
+                    <option value="1080">🌟 1080p Full HD</option>
+                    <option value="720">⚡ 720p HD (အမြန်ဆုံးနှင့် Size သင့်တော်သည်)</option>
+                    <option value="480">📱 480p SD (Data အသက်သာဆုံး)</option>
                 </select>
             </div>
         </div>
@@ -212,12 +242,14 @@
     </div>
 
     <script>
-        const videoUrlInput = document.getElementById('videoUrlInput');
-        const loadUrlBtn = document.getElementById('loadUrlBtn');
+        let activeTab = 'local'; // 'local' or 'bilibili'
+        let videoDuration = 10;
+        let originalFileSizeMB = 0;
+        let startSec = 0;
+        let endSec = 10;
+
         const videoInput = document.getElementById('videoInput');
-        const loadedTitle = document.getElementById('loadedTitle');
         const videoPlayer = document.getElementById('videoPlayer');
-        const ytPlayerWrapper = document.getElementById('ytPlayerWrapper');
         const playerContainer = document.getElementById('playerContainer');
         const startSlider = document.getElementById('startSlider');
         const endSlider = document.getElementById('endSlider');
@@ -234,16 +266,32 @@
         const progressBar = document.getElementById('progressBar');
         const cutBtn = document.getElementById('cutBtn');
 
-        let sourceMode = null; // 'file' သို့မဟုတ် 'url'
-        let activeUrl = "";
-        let activeVideoTitle = "video";
-        let ytPlayer = null;
-        let isYtActive = false;
+        function switchTab(tab) {
+            activeTab = tab;
+            const tabLocal = document.getElementById('tabLocal');
+            const tabBili = document.getElementById('tabBili');
+            const localSection = document.getElementById('localSection');
+            const biliSection = document.getElementById('biliSection');
+            const engineWrapper = document.getElementById('engineWrapper');
+            const qualityWrapper = document.getElementById('qualityWrapper');
 
-        let videoDuration = 10;
-        let originalFileSizeMB = 0;
-        let startSec = 0;
-        let endSec = 10;
+            if (tab === 'local') {
+                tabLocal.className = "py-2.5 text-sm font-semibold rounded-lg bg-blue-600 text-white transition";
+                tabBili.className = "py-2.5 text-sm font-semibold rounded-lg text-slate-400 hover:text-white transition";
+                localSection.classList.remove('hidden');
+                biliSection.classList.add('hidden');
+                engineWrapper.classList.remove('hidden');
+                qualityWrapper.classList.add('hidden');
+            } else {
+                tabBili.className = "py-2.5 text-sm font-semibold rounded-lg bg-pink-600 text-white transition";
+                tabLocal.className = "py-2.5 text-sm font-semibold rounded-lg text-slate-400 hover:text-white transition";
+                biliSection.classList.remove('hidden');
+                localSection.classList.add('hidden');
+                engineWrapper.classList.add('hidden');
+                qualityWrapper.classList.remove('hidden');
+                estSizeBadge.classList.add('hidden');
+            }
+        }
 
         function formatTime(seconds) {
             if (isNaN(seconds) || seconds < 0) seconds = 0;
@@ -273,21 +321,6 @@
             return result.join(' ');
         }
 
-        function seekActivePlayer(seconds) {
-            if (isYtActive && ytPlayer && typeof ytPlayer.seekTo === 'function') {
-                ytPlayer.seekTo(seconds, true);
-            } else if (!isYtActive && videoPlayer.readyState >= 1) {
-                videoPlayer.currentTime = seconds;
-            }
-        }
-
-        function getActiveCurrentTime() {
-            if (isYtActive && ytPlayer && typeof ytPlayer.getCurrentTime === 'function') {
-                return ytPlayer.getCurrentTime() || 0;
-            }
-            return videoPlayer.currentTime || 0;
-        }
-
         function syncUI(seekTarget = null) {
             startSec = Math.max(0, Math.min(startSec, videoDuration));
             endSec = Math.max(startSec + 0.1, Math.min(endSec, videoDuration));
@@ -309,109 +342,85 @@
             clipLengthText.innerText = formatDurationWords(clipDuration);
             clipRangeText.innerText = `${startFormatted} → ${endFormatted}`;
 
-            if (originalFileSizeMB > 0 && videoDuration > 0) {
+            if (activeTab === 'local' && originalFileSizeMB > 0 && videoDuration > 0) {
                 const estMB = ((clipDuration / videoDuration) * originalFileSizeMB).toFixed(1);
-                estSizeBadge.innerText = `📦 မူရင်း ~${originalFileSizeMB.toFixed(1)} MB → ဖြတ်ပြီး ~${estMB} MB`;
+                estSizeBadge.innerText = `📦 မူရင်း ${originalFileSizeMB.toFixed(1)} MB → ဖြတ်ပြီး ~${estMB} MB`;
                 estSizeBadge.classList.remove('hidden');
-            } else {
-                estSizeBadge.classList.add('hidden');
             }
 
-            if (seekTarget === 'start') seekActivePlayer(startSec);
-            if (seekTarget === 'end') seekActivePlayer(endSec);
+            if (seekTarget === 'start' && videoPlayer.readyState >= 1) {
+                videoPlayer.currentTime = startSec;
+            } else if (seekTarget === 'end' && videoPlayer.readyState >= 1) {
+                videoPlayer.currentTime = endSec;
+            }
         }
 
-        // Link မှ Video ကို Load လုပ်ခြင်း
-        async function loadFromUrl() {
-            const url = videoUrlInput.value.trim();
+        // Bilibili Info ရှာခြင်း
+        async function fetchBilibiliInfo() {
+            const url = document.getElementById('biliUrlInput').value.trim();
             if (!url) {
-                alert("ကျေးဇူးပြု၍ Video Link အရင်ထည့်ပေးပါ။");
+                alert("Bilibili Link အရင်ထည့်ပေးပါ။");
                 return;
             }
 
-            loadUrlBtn.disabled = true;
-            loadUrlBtn.innerHTML = "<span>⏳</span> Loading...";
-            updateProgress("🔍 Link မှ Video အချက်အလက်များကို ဆွဲယူနေသည်...", 35);
+            const btn = document.getElementById('fetchBiliBtn');
+            btn.disabled = true;
+            btn.innerText = "⏳ ရှာနေသည်...";
 
             try {
-                const resp = await fetch("/load-url", {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ url })
-                });
-
+                const formData = new FormData();
+                formData.append("url", url);
+                const resp = await fetch("/bilibili/info", { method: "POST", body: formData });
                 const data = await resp.json();
+
                 if (!resp.ok) throw new Error(data.detail || "Link ဖတ်မရပါ");
 
-                sourceMode = "url";
-                activeUrl = url;
-                activeVideoTitle = data.title || "video";
-                videoInput.value = "";
-
-                videoDuration = data.duration || 60;
-                originalFileSizeMB = data.filesize_mb || 0;
+                videoDuration = parseFloat(data.duration) || 60;
                 startSlider.max = videoDuration;
                 endSlider.max = videoDuration;
                 startSec = 0;
                 endSec = videoDuration;
                 totalDurationLabel.innerText = formatTime(videoDuration);
 
-                loadedTitle.innerText = `✅ ချိတ်ဆက်ပြီး: ${activeVideoTitle}`;
-                loadedTitle.classList.remove('hidden');
-                playerContainer.classList.remove('hidden');
-
-                // YouTube Link ဖြစ်ပါက YouTube Player ဖြင့် ပြမည်၊ အခြား Link ဆိုလျှင် HTML5 Video Player ဖြင့် ပြမည်
-                if (data.youtube_id) {
-                    isYtActive = true;
-                    videoPlayer.pause();
-                    videoPlayer.classList.add('hidden');
-                    ytPlayerWrapper.classList.remove('hidden');
-
-                    if (ytPlayer && typeof ytPlayer.loadVideoById === 'function') {
-                        ytPlayer.loadVideoById(data.youtube_id);
-                    } else {
-                        ytPlayer = new YT.Player('ytPlayer', {
-                            width: '100%',
-                            height: '100%',
-                            videoId: data.youtube_id,
-                            playerVars: { playsinline: 1, rel: 0 }
-                        });
-                    }
-                } else {
-                    isYtActive = false;
-                    if (ytPlayer && typeof ytPlayer.stopVideo === 'function') ytPlayer.stopVideo();
-                    ytPlayerWrapper.classList.add('hidden');
-                    videoPlayer.classList.remove('hidden');
-                    videoPlayer.src = data.stream_url || url;
-                }
+                document.getElementById('biliTitle').innerText = data.title;
+                document.getElementById('biliDurationText').innerText = `⏱️ စုစုပေါင်းကြာချိန်: ${formatDurationWords(videoDuration)}`;
+                document.getElementById('biliInfoCard').classList.remove('hidden');
 
                 syncUI();
-                updateProgress("✅ Video အသင့်ဖြစ်ပါပြီ! ဖြတ်လိုသည့်အပိုင်းကို ရွေးချယ်နိုင်ပါပြီ။", 100);
-                setTimeout(() => statusBox.classList.add('hidden'), 2000);
-
             } catch (err) {
-                alert("အမှားအယွင်းရှိပါသည်: " + err.message);
-                statusBox.classList.add('hidden');
+                alert(err.message);
             } finally {
-                loadUrlBtn.disabled = false;
-                loadUrlBtn.innerHTML = "<span>✂️</span> Load video";
+                btn.disabled = false;
+                btn.innerText = "🔍 ရှာမည်";
             }
         }
 
-        // ဖုန်း/စက်ထဲမှ Video File ရွေးသည့်အခါ
+        // Bilibili Video ကို Player ထဲသို့ ဆွဲတင်ပြီး ဖွင့်ကြည့်ခြင်း
+        function loadBilibiliPreview() {
+            const url = document.getElementById('biliUrlInput').value.trim();
+            if (!url) return;
+
+            const previewBtn = document.getElementById('loadPreviewBtn');
+            previewBtn.innerText = "⏳ Player တင်နေသည်...";
+            previewBtn.disabled = true;
+
+            playerContainer.classList.remove('hidden');
+            videoPlayer.src = `/bilibili/preview?url=${encodeURIComponent(url)}`;
+            videoPlayer.onloadeddata = () => {
+                previewBtn.innerText = "✅ Player အဆင်သင့်ဖြစ်ပါပြီ";
+            };
+            videoPlayer.onerror = () => {
+                previewBtn.innerText = "🎥 Player ဖြင့် ဖွင့်ကြည့်မည်";
+                previewBtn.disabled = false;
+                alert("Preview တင်ရာတွင် အခက်အခဲရှိပါသည်၊ သို့သော် Timeline Slider ဖြင့် တိုက်ရိုက်ဖြတ်ယူနိုင်ပါသည်။");
+            };
+        }
+
+        // Local Video ရွေးချယ်ခြင်း
         videoInput.addEventListener('change', function() {
             const file = this.files[0];
             if (file) {
-                sourceMode = "file";
-                isYtActive = false;
-                if (ytPlayer && typeof ytPlayer.stopVideo === 'function') ytPlayer.stopVideo();
-                ytPlayerWrapper.classList.add('hidden');
-                videoPlayer.classList.remove('hidden');
-
                 originalFileSizeMB = file.size / (1024 * 1024);
-                loadedTitle.innerText = `📂 ရွေးချယ်ထားသောဖိုင်: ${file.name} (${originalFileSizeMB.toFixed(1)} MB)`;
-                loadedTitle.classList.remove('hidden');
-
                 const url = URL.createObjectURL(file);
                 videoPlayer.src = url;
                 playerContainer.classList.remove('hidden');
@@ -451,13 +460,13 @@
         }
 
         function setStartTimeFromPlayer() {
-            startSec = getActiveCurrentTime();
+            startSec = videoPlayer.currentTime;
             if (startSec >= endSec) endSec = Math.min(videoDuration, startSec + 1);
             syncUI();
         }
 
         function setEndTimeFromPlayer() {
-            endSec = getActiveCurrentTime();
+            endSec = videoPlayer.currentTime;
             if (endSec <= startSec) startSec = Math.max(0, endSec - 1);
             syncUI();
         }
@@ -479,171 +488,62 @@
             progressBar.style.width = `${percent}%`;
         }
 
-        // Link မှ Video ကို Server ဖြင့် ဖြတ်ခြင်း
-        async function cutUrlOnServer(url, startTime, endTime, cutMode) {
-            updateProgress("☁️ Link မှ ရွေးထားသည့်အပိုင်းကို Server ဖြင့် ဖြတ်ထုတ်နေသည်...", 50);
-            const formData = new FormData();
-            formData.append("url", url);
-            formData.append("start_time", startTime);
-            formData.append("end_time", endTime);
-            formData.append("mode", cutMode);
-
-            const resp = await fetch("/cut-url", {
-                method: "POST",
-                body: formData
-            });
-
-            if (!resp.ok) {
-                const err = await resp.json().catch(() => ({}));
-                throw new Error(err.detail || "Link မှ Video ဖြတ်ရာတွင် အမှားရှိပါသည်။");
-            }
-            updateProgress("✅ ဖြတ်ပြီးပါပြီ! Download ဆွဲနေသည်...", 100);
-            return await resp.blob();
-        }
-
-        // File ကို Server ဖြင့် ဖြတ်ခြင်း
-        function cutOnServer(file, startTime, endTime, cutMode) {
-            return new Promise((resolve, reject) => {
-                const xhr = new XMLHttpRequest();
-                const formData = new FormData();
-                formData.append("file", file);
-                formData.append("start_time", startTime);
-                formData.append("end_time", endTime);
-                formData.append("mode", cutMode);
-
-                xhr.open("POST", "/cut", true);
-                xhr.responseType = "blob";
-
-                xhr.upload.onprogress = (e) => {
-                    if (e.lengthComputable) {
-                        const percent = Math.round((e.loaded / e.total) * 80);
-                        updateProgress("☁️ Server သို့ Upload တင်နေသည်...", percent);
-                    }
-                };
-
-                xhr.onload = () => {
-                    if (xhr.status === 200) {
-                        updateProgress("✅ ဖြတ်ပြီးပါပြီ! Download ဆွဲနေသည်...", 100);
-                        resolve(xhr.response);
-                    } else {
-                        reject(new Error("Server မှ Video ဖြတ်ရာတွင် အမှားရှိပါသည်။"));
-                    }
-                };
-
-                xhr.onerror = () => reject(new Error("Network အဆက်အသွယ် ပြတ်တောက်သွားပါသည်။"));
-                xhr.send(formData);
-            });
-        }
-
-        // Client-side (FFmpeg.wasm) Cut
-        async function cutOnClient(file, startTime, endTime) {
-            updateProgress("📦 Browser Engine ကို ချိတ်ဆက်နေသည်...", 15);
-
-            if (!window.FFmpegWASM) {
-                await new Promise((res, rej) => {
-                    const s1 = document.createElement('script');
-                    s1.src = "https://unpkg.com/@ffmpeg/ffmpeg@0.12.10/dist/umd/ffmpeg.js";
-                    s1.onload = res;
-                    s1.onerror = rej;
-                    document.head.appendChild(s1);
-                });
-            }
-
-            const { FFmpeg } = window.FFmpegWASM;
-            const ffmpeg = new FFmpeg();
-
-            ffmpeg.on("progress", ({ progress }) => {
-                const p = Math.min(95, Math.max(30, Math.round(progress * 100)));
-                updateProgress("⚡ Browser ထဲတွင် အမြန်ဖြတ်နေသည်...", p);
-            });
-
-            const baseURL = "https://unpkg.com/@ffmpeg/core@0.12.6/dist/umd";
-            const toBlobURL = async (url, mimeType) => {
-                const resp = await fetch(url);
-                const buf = await resp.arrayBuffer();
-                return URL.createObjectURL(new Blob([buf], { type: mimeType }));
-            };
-
-            const workerBlobURL = await toBlobURL(
-                "https://unpkg.com/@ffmpeg/ffmpeg@0.12.10/dist/umd/814.ffmpeg.js",
-                "text/javascript"
-            );
-
-            await ffmpeg.load({
-                coreURL: await toBlobURL(`${baseURL}/ffmpeg-core.js`, "text/javascript"),
-                wasmURL: await toBlobURL(`${baseURL}/ffmpeg-core.wasm`, "application/wasm"),
-                classWorkerURL: workerBlobURL
-            });
-
-            updateProgress("📂 Video ဖိုင်ကို ဖတ်နေသည်...", 40);
-            const ext = file.name.substring(file.name.lastIndexOf('.')) || ".mp4";
-            const inName = "input" + ext;
-            const outName = "output" + ext;
-
-            const fileData = new Uint8Array(await file.arrayBuffer());
-            await ffmpeg.writeFile(inName, fileData);
-
-            updateProgress("✂️ Video ဖြတ်တောက်နေသည်...", 65);
-            await ffmpeg.exec([
-                "-ss", startTime,
-                "-to", endTime,
-                "-i", inName,
-                "-c", "copy",
-                outName
-            ]);
-
-            const data = await ffmpeg.readFile(outName);
-            updateProgress("✅ ပြီးဆုံးပါပြီ!", 100);
-            return new Blob([data.buffer], { type: "video/mp4" });
-        }
-
         async function processVideo() {
             const startTime = startTimeInput.value.trim();
             const endTime = endTimeInput.value.trim();
             const cutMode = document.getElementById('cutMode').value;
-            const engineMode = document.getElementById('engineMode').value;
-
-            if (!sourceMode) {
-                alert("ကျေးဇူးပြု၍ Video Link ထည့်ပြီး Load video နှိပ်ပါ သို့မဟုတ် Video ဖိုင်ရွေးချယ်ပါ။");
-                return;
-            }
 
             cutBtn.disabled = true;
             cutBtn.classList.add('opacity-50', 'cursor-not-allowed');
 
             try {
                 let resultBlob;
-                let downloadFileName = "cut_video.mp4";
+                let downloadName = "cut_video.mp4";
 
-                if (sourceMode === "url") {
-                    resultBlob = await cutUrlOnServer(activeUrl, startTime, endTime, cutMode);
-                    downloadFileName = `cut_${activeVideoTitle}.mp4`;
+                if (activeTab === 'bilibili') {
+                    const url = document.getElementById('biliUrlInput').value.trim();
+                    if (!url) throw new Error("ကျေးဇူးပြု၍ Bilibili Link အရင်ထည့်ပေးပါ။");
+
+                    updateProgress("📺 Bilibili မှ ရွေးထားသောအပိုင်းကို တိုက်ရိုက်ဖြတ်ယူနေသည်...", 50);
+                    const formData = new FormData();
+                    formData.append("url", url);
+                    formData.append("start_time", startTime);
+                    formData.append("end_time", endTime);
+                    formData.append("quality", document.getElementById('biliQuality').value);
+                    formData.append("mode", cutMode);
+
+                    const resp = await fetch("/bilibili/cut", { method: "POST", body: formData });
+                    if (!resp.ok) {
+                        const err = await resp.json();
+                        throw new Error(err.detail || "Bilibili ဖြတ်ယူရာတွင် အမှားရှိပါသည်");
+                    }
+                    updateProgress("✅ ဖြတ်ပြီးပါပြီ! Download ဆွဲနေသည်...", 100);
+                    resultBlob = await resp.blob();
+                    downloadName = `bilibili_${Date.now()}.mp4`;
                 } else {
                     const file = videoInput.files[0];
-                    downloadFileName = `cut_${file.name}`;
-                    const shouldTryClient =
-                        engineMode === "client" ||
-                        (engineMode === "auto" && originalFileSizeMB <= 300 && cutMode === "lossless");
+                    if (!file) throw new Error("ကျေးဇူးပြု၍ Video ဖိုင်အရင်ရွေးပေးပါ။");
 
-                    if (shouldTryClient) {
-                        try {
-                            resultBlob = await cutOnClient(file, startTime, endTime);
-                        } catch (clientErr) {
-                            if (engineMode === "client") {
-                                throw new Error("ဖုန်း Browser ကန့်သတ်ချက်ကြောင့် Client-side မရပါ။ Auto သို့မဟုတ် Server-side ကို ရွေးပေးပါ။");
-                            }
-                            updateProgress("🔄 Server-side စနစ်သို့ အလိုအလျောက် ပြောင်းနေသည်...", 10);
-                            resultBlob = await cutOnServer(file, startTime, endTime, cutMode);
-                        }
-                    } else {
-                        resultBlob = await cutOnServer(file, startTime, endTime, cutMode);
-                    }
+                    downloadName = `cut_${file.name}`;
+                    updateProgress("☁️ Video ကို ဖြတ်တောက်နေသည်...", 40);
+
+                    const formData = new FormData();
+                    formData.append("file", file);
+                    formData.append("start_time", startTime);
+                    formData.append("end_time", endTime);
+                    formData.append("mode", cutMode);
+
+                    const resp = await fetch("/cut", { method: "POST", body: formData });
+                    if (!resp.ok) throw new Error("Server မှ Video ဖြတ်ရာတွင် အမှားရှိပါသည်။");
+
+                    updateProgress("✅ ပြီးဆုံးပါပြီ!", 100);
+                    resultBlob = await resp.blob();
                 }
 
                 const downloadUrl = URL.createObjectURL(resultBlob);
                 const a = document.createElement('a');
                 a.href = downloadUrl;
-                a.download = downloadFileName;
+                a.download = downloadName;
                 document.body.appendChild(a);
                 a.click();
                 a.remove();
